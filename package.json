@@ -2,11 +2,12 @@
   "name": "@blastz/nico-build",
   "version": "0.1.0",
   "description": "nico build utility",
-  "main": "dist/src/index.js",
+  "main": "src/index.js",
   "scripts": {
     "tsc": "tsc",
+    "push": "npm run build && cd ./dist && npm publish --access public --registry=https://registry.npmjs.org",
     "test": "jest",
-    "push": "npm run tsc && npm publish --access public --registry=https://registry.npmjs.org"
+    "build": "rm -rf dist && npm run tsc && cp package.json README.md ./dist && cp -r ./template ./dist/src"
   },
   "keywords": [
     "node",
@@ -16,20 +17,19 @@
   "author": "blastz",
   "license": "ISC",
   "dependencies": {
-    "@zeit/ncc": "^0.22.2",
-    "debug": "^4.1.1",
+    "@zeit/ncc": "^0.22.3",
     "shelljs": "^0.8.4"
   },
   "devDependencies": {
-    "@types/debug": "^4.1.5",
-    "@types/jest": "^25.2.3",
+    "@blastz/nico": "^0.9.4",
+    "@types/jest": "^26.0.0",
     "@types/shelljs": "^0.8.8",
-    "@types/supertest": "^2.0.9",
+    "javascript-obfuscator": "^1.1.0",
     "jest": "^26.0.1",
     "supertest": "^4.0.2",
-    "typescript": "^3.9.3"
+    "typescript": "^3.9.5"
   },
   "files": [
-    "dist/src"
+    "src/**/*"
   ]
 }

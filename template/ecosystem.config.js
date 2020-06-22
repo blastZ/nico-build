@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'node-services-boilerplate',
+      name: 'app-name',
       script: './app.js',
       instances: '-1',
       exec_mode: 'cluster',
