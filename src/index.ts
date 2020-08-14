@@ -4,6 +4,7 @@ import shell from 'shelljs';
 import JavaScriptObfuscator from 'javascript-obfuscator';
 import { DEFAULT_NCC_CONFIG, DEFAULT_BYTENODE_CONFIG, DEFAULT_ECOSYSTEM, DEFAULT_APP_CONFIG } from './config';
 import deepmerge from './deepmerge';
+import nccCompile from './ncc';
 
 const bytenode = require('./lib/bytenode');
 const ncc = require('@zeit/ncc');
@@ -11,6 +12,7 @@ const ncc = require('@zeit/ncc');
 export default async function build(input: string, output: string, inputConfig: Config = {}) {
   const config: Config = deepmerge(
     {
+      series: ['ncc'],
       rmDist: false,
       outputName: 'index',
       ncc: DEFAULT_NCC_CONFIG,
@@ -36,9 +38,16 @@ export default async function build(input: string, output: string, inputConfig: 
     shell.mkdir('-p', dist);
   }
 
-  await compile(origin, dist, config);
+  await Promise.all(config.series!.map(async compilerName => {
+    if(compilerName === 'ncc') {
+      await nccCompile(origin, dist, config);
+    } else if(compilerName === 'bytenode') {
+      await binary(origin, dist, config);
+    }
+  }))
+  
   await template(origin, dist, config);
-  await binary(origin, dist, config);
+  
 }
 
 const binary = async (origin: string, dist: string, config: Config) => {
@@ -84,9 +93,9 @@ const _createEcosystemFile = async (origin: string, dist: string, config: Config
 };
 
 const _createConfigFile = async (origin: string, dist: string, config: Config) => {
-  let configFile = `const config = {\n`;
+  let configFile = `module.exports = {\n`;
   configFile = _appendObj(configFile, config.appConfig || {}, 2);
-  configFile += '};\n\n' + `const env = process.env.APP_ENV || 'production';\n\n` + `module.exports = config[env];`;
+  configFile += '};';
 
   await fsPromises.writeFile(path.resolve(dist, './config.js'), configFile);
 };
@@ -118,42 +127,5 @@ const template = async (origin: string, dist: string, config: Config) => {
   await _createEngineFile(origin, dist, config);
 };
 
-const compile = async (origin: string, dist: string, config: Config) => {
-  const originStat = await fsPromises.stat(origin);
 
-  if (originStat.isDirectory()) {
-    if (config.ncc) {
-      const entry = path.resolve(origin, './index.js');
 
-      if (!fs.existsSync(entry)) {
-        throw new Error('Input must be a file');
-      }
-
-      await nccCompile(entry, dist, config);
-    }
-  } else {
-    if (config.ncc) {
-      await nccCompile(origin, dist, config);
-    }
-  }
-};
-
-const nccCompile = async (origin: string, dist: string, config: Config) => {
-  const { err, code, map, assets }: { err: Error; code: string; map: any; assets: object } = await ncc(origin, config);
-
-  await fsPromises.writeFile(path.resolve(dist, `./${config.outputName}.js`), code);
-
-  if (assets) {
-    await Promise.all(
-      Object.entries(assets).map(async ([name, { source }]) => {
-        const dir = path.resolve(dist, path.dirname(name));
-
-        if (!fs.existsSync(dir)) {
-          shell.mkdir('-p', dir);
-        }
-
-        await fsPromises.writeFile(path.resolve(dist, `./${name}`), source);
-      })
-    );
-  }
-};

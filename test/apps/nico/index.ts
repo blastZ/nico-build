@@ -6,7 +6,11 @@ export = (config: Config) => {
     {
       routes: {
         'GET /test': {
-          controller: require('./api/controller/get')
+          controller: (ctx) => {
+            return ctx.body = {
+              success: true
+            }
+          }
         }
       }
     },

@@ -16,16 +16,14 @@ test('Compile', async () => {
       }
     },
     appConfig: {
-      production: {
-        custom: {
-          COOKIE_CONFIG: {
-            domain: '.stackbunch.com'
-          },
-          userList: [
-            { name: 'a', age: 1 },
-            { name: 'b', age: 2 }
-          ]
-        }
+      custom: {
+        COOKIE_CONFIG: {
+          domain: '.stackbunch.com'
+        },
+        userList: [
+          { name: 'a', age: 1 },
+          { name: 'b', age: 2 }
+        ]
       }
     }
   });
