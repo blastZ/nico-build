@@ -14,7 +14,12 @@ $ npm install -D @blastz/nico-build
 import path from 'path';
 import build from '@blastz/nico-build';
 
-build(path.resolve(__dirname, './index.js'), path.resolve(__dirname, './dist')).catch((err) => {
-  console.log(err);
-});
+build([
+  {
+    type: 'ncc',
+    input: path.resolve(__dirname, './index.js'),
+    output: path.resolve(__dirname, './dist'),
+    rmOutput: true
+  }
+]);
 ```

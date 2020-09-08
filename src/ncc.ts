@@ -1,43 +1,65 @@
-
 import { promises as fs } from 'fs';
 import shell from 'shelljs';
 import path from 'path';
+import os from 'os';
+import { deepmerge } from '@blastz/nico-utility';
+import { CommonConfig } from './config';
 
 const ncc = require('@zeit/ncc');
 
-export default async function nccCompile (origin: string, dist: string, config: Config)  {
-    const originStat = await fs.stat(origin);
+export interface Config extends CommonConfig {
+  type: 'ncc';
+  name?: string;
+  cache?: string | false;
+  externals?: string[];
+  filterAssetBase?: string;
+  minify?: boolean;
+  sourceMap?: boolean;
+  sourceMapBasePrefix?: string;
+  sourceMapRegister?: boolean;
+  watch?: boolean;
+  v8cache?: boolean;
+  quiet?: boolean;
+  debugLog?: boolean;
+}
 
-    if (originStat.isDirectory()) {
-        const entry = path.resolve(origin, './index.js');
-  
-        if (!shell.test('-f', entry)) {
-          throw new Error('Input must be a file');
+export default async function nccCompile(inputConfig: Config) {
+  const config: Config = deepmerge(DEFAULT_NCC_CONFIG, inputConfig || {});
+
+  await compile(config);
+}
+
+const compile = async (config: Config) => {
+  const { input, output, type, name, ...nccConfigs } = config;
+  const { err, code, map, assets }: { err: Error; code: string; map: any; assets: object } = await ncc(input, nccConfigs);
+
+  await fs.writeFile(path.resolve(output, `./${config.name ?? 'app'}.js`), code);
+
+  if (assets) {
+    await Promise.all(
+      Object.entries(assets).map(async ([name, { source }]) => {
+        const dir = path.resolve(output, path.dirname(name));
+
+        if (!shell.test('-d', dir)) {
+          shell.mkdir('-p', dir);
         }
-  
-        await compile(entry, dist, config);
-    } else {
-        await compile(origin, dist, config);
-    }
+
+        await fs.writeFile(path.resolve(output, `./${name}`), source);
+      })
+    );
+  }
 };
 
-
-const compile = async (origin: string, dist: string, config: Config) => {
-    const { err, code, map, assets }: { err: Error; code: string; map: any; assets: object } = await ncc(origin, config.ncc);
-
-    await fs.writeFile(path.resolve(dist, `./${path.basename(config.outputName || 'index')}.js`), code);
-  
-    if (assets) {
-      await Promise.all(
-        Object.entries(assets).map(async ([name, { source }]) => {
-          const dir = path.resolve(dist, path.dirname(name));
-  
-          if (!shell.test('-d', dir)) {
-            shell.mkdir('-p', dir);
-          }
-  
-          await fs.writeFile(path.resolve(dist, `./${name}`), source);
-        })
-      );
-    }
-}
+const DEFAULT_NCC_CONFIG = {
+  cache: path.resolve(os.tmpdir(), './nico-build/ncc/.cache'),
+  externals: [],
+  filterAssetBase: process.cwd(),
+  minify: true,
+  sourceMap: false,
+  sourceMapBasePrefix: '../',
+  sourceMapRegister: true,
+  watch: false,
+  v8cache: false,
+  quiet: true,
+  debugLog: false
+};

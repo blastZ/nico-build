@@ -5,6 +5,7 @@ node_modules
 
 # Temporary files
 .tmp
+app/
 
 # Project
 dist
